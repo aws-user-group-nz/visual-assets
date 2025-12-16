@@ -23,6 +23,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Create symlinks for direct access
+        run: |
+          mkdir -p icons logos images
+          if [ -d "assets/icons" ]; then
+            cp -r assets/icons/* icons/
+          fi
+          if [ -d "assets/logos" ]; then
+            cp -r assets/logos/* logos/
+          fi
+          if [ -d "assets/images" ]; then
+            cp -r assets/images/* images/
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
