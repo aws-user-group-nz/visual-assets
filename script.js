@@ -126,129 +126,206 @@ function matches(asset) {
     return (q ? (nameHit || descHit || tagHit) : true) && tagsOk && typeOk && sizeOk;
 }
 
-// Check if asset is SVG
-function isSvg(path) {
-    return path && path.toLowerCase().endsWith('.svg');
+// Get file extension (normalized)
+function getFileExtension(path) {
+    const ext = path.toLowerCase().split('.').pop();
+    // Normalize jpeg to jpg
+    return ext === 'jpeg' ? 'jpg' : ext;
 }
 
-// SVG to PNG conversion
-async function svgToPng(svgPath, width = null, height = null) {
-    try {
-        const svgText = await fetch(svgPath).then(r => r.text());
-        const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
-        const svgElement = svgDoc.documentElement;
+// Check if asset is SVG
+function isSvg(path) {
+    return getFileExtension(path) === 'svg';
+}
 
-        // Get viewBox or use provided dimensions
-        const viewBox = svgElement.getAttribute("viewBox");
-        if (viewBox) {
-            const [, , vbWidth, vbHeight] = viewBox.split(" ").map(Number);
-            width = width || vbWidth || 512;
-            height = height || vbHeight || 512;
-        } else {
-            width = width || Number(svgElement.getAttribute("width")) || 512;
-            height = height || Number(svgElement.getAttribute("height")) || 512;
-        }
+// Check if asset is an image (all supported formats)
+function isImage(path) {
+    const ext = getFileExtension(path);
+    return ['svg', 'png', 'jpg', 'webp'].includes(ext);
+}
 
-        // Use asset size if available
-        const asset = state.data.find(a => a.path === svgPath);
-        if (asset && asset.size) {
-            width = asset.size;
-            height = asset.size;
-        }
-
+// Get image dimensions from asset or image element
+async function getImageDimensions(imagePath, asset) {
+    return new Promise((resolve) => {
         const img = new Image();
-        const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(svgBlob);
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        };
+        img.onerror = () => {
+            // Fallback to asset size or default
+            const size = asset?.size || 512;
+            resolve({ width: size, height: size });
+        };
+        img.src = imagePath;
+    });
+}
 
-        return new Promise((resolve, reject) => {
-            img.onload = () => {
-                const canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob(resolve, "image/png");
-                URL.revokeObjectURL(url);
-            };
+// Generic image to canvas conversion
+async function imageToCanvas(imagePath, asset = null) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const ext = getFileExtension(imagePath);
+            let img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            if (ext === 'svg') {
+                // Handle SVG specially
+                const svgText = await fetch(imagePath).then(r => r.text());
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+                const svgElement = svgDoc.documentElement;
+
+                // Get dimensions from SVG
+                let width, height;
+                const viewBox = svgElement.getAttribute("viewBox");
+                if (viewBox) {
+                    const [, , vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+                    width = vbWidth || 512;
+                    height = vbHeight || 512;
+                } else {
+                    width = Number(svgElement.getAttribute("width")) || 512;
+                    height = Number(svgElement.getAttribute("height")) || 512;
+                }
+
+                // Use asset size if available
+                if (asset && asset.size) {
+                    width = asset.size;
+                    height = asset.size;
+                }
+
+                const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+                const url = URL.createObjectURL(svgBlob);
+                img.src = url;
+
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas);
+                };
+            } else {
+                // Handle raster images
+                img.src = imagePath;
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas);
+                };
+            }
+
             img.onerror = reject;
-            img.src = url;
-        });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Convert image to target format
+async function convertImage(imagePath, targetFormat, asset = null) {
+    try {
+        const canvas = await imageToCanvas(imagePath, asset);
+        const mimeTypes = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'webp': 'image/webp'
+        };
+
+        if (targetFormat === 'svg') {
+            // Convert raster to embedded SVG
+            const base64 = canvas.toDataURL('image/png');
+            const dims = { width: canvas.width, height: canvas.height };
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${dims.width}" height="${dims.height}"><image href="${base64}" width="${dims.width}" height="${dims.height}"/></svg>`;
+            return new Blob([svg], { type: "image/svg+xml" });
+        } else {
+            // Convert to raster format
+            const mimeType = mimeTypes[targetFormat] || 'image/png';
+            const quality = targetFormat === 'jpg' || targetFormat === 'jpeg' ? 0.92 : undefined;
+            return new Promise((resolve) => {
+                canvas.toBlob(resolve, mimeType, quality);
+            });
+        }
     } catch (error) {
-        console.error("SVG to PNG conversion failed:", error);
+        console.error(`Conversion to ${targetFormat} failed:`, error);
         throw error;
     }
 }
 
-// Copy SVG
-async function copySvg(asset, button) {
+// Copy image in specified format
+async function copyImage(asset, format, button) {
     try {
-        const svg = await fetch(asset.path).then(r => r.text());
-        await navigator.clipboard.writeText(svg);
-        const old = button.innerHTML;
+        const currentExt = getFileExtension(asset.path);
+        const oldHTML = button.innerHTML;
+        const oldTitle = button.title;
+        let blob;
+
+        // Handle clipboard write
+        if (format === 'svg') {
+            // SVG: copy as text
+            if (format === currentExt) {
+                const svg = await fetch(asset.path).then(r => r.text());
+                await navigator.clipboard.writeText(svg);
+            } else {
+                const blob = await convertImage(asset.path, format, asset);
+                const text = await blob.text();
+                await navigator.clipboard.writeText(text);
+            }
+        } else {
+            // Raster images: Clipboard API only supports PNG, so always convert to PNG
+            const canvas = await imageToCanvas(asset.path, asset);
+            const pngBlob = await new Promise((resolve) => {
+                canvas.toBlob(resolve, 'image/png');
+            });
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': pngBlob })
+            ]);
+        }
+
         button.innerHTML = "✓";
         button.title = "Copied!";
         setTimeout(() => {
-            button.innerHTML = old;
-            button.title = "Copy SVG";
+            button.innerHTML = oldHTML;
+            button.title = oldTitle;
         }, 1000);
     } catch (err) {
-        console.error("Failed to copy SVG:", err);
-        alert("Failed to copy SVG to clipboard");
+        console.error(`Failed to copy ${format}:`, err);
+        alert(`Failed to copy ${format.toUpperCase()} to clipboard`);
     }
 }
 
-// Copy PNG
-async function copyPng(asset, button) {
+// Download image in specified format
+async function downloadImage(asset, format) {
     try {
-        const blob = await svgToPng(asset.path);
-        await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob })
-        ]);
-        const old = button.innerHTML;
-        button.innerHTML = "✓";
-        button.title = "Copied!";
-        setTimeout(() => {
-            button.innerHTML = old;
-            button.title = "Copy PNG";
-        }, 1000);
-    } catch (err) {
-        console.error("Failed to copy PNG:", err);
-        alert("Failed to copy PNG to clipboard");
-    }
-}
+        const currentExt = getFileExtension(asset.path);
+        let blob, filename;
 
-// Download SVG
-async function downloadSvg(asset) {
-    try {
-        const svg = await fetch(asset.path).then(r => r.text());
-        const blob = new Blob([svg], { type: "image/svg+xml" });
+        if (format === currentExt) {
+            // Download original file
+            const response = await fetch(asset.path);
+            blob = await response.blob();
+            filename = asset.path.split("/").pop();
+        } else {
+            // Convert and download
+            blob = await convertImage(asset.path, format, asset);
+            const baseName = asset.path.split("/").pop().replace(/\.[^/.]+$/, "");
+            filename = `${baseName}.${format}`;
+        }
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = asset.path.split("/").pop();
-        a.click();
-        URL.revokeObjectURL(url);
-    } catch (err) {
-        console.error("Failed to download SVG:", err);
-        alert("Failed to download SVG");
-    }
-}
-
-// Download PNG
-async function downloadPng(asset) {
-    try {
-        const blob = await svgToPng(asset.path);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        const filename = asset.path.split("/").pop().replace(".svg", ".png");
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
-        console.error("Failed to download PNG:", err);
-        alert("Failed to download PNG");
+        console.error(`Failed to download ${format}:`, err);
+        alert(`Failed to download ${format.toUpperCase()}`);
     }
 }
 
@@ -280,33 +357,77 @@ function render() {
         const description = asset.description || `${displayName} ${asset.type || 'asset'}`;
         const theme = extractTheme(asset.name);
         const sizeLabel = asset.size ? `${asset.size}×${asset.size}` : '';
-        const isSvgAsset = isSvg(asset.path);
+        const isImageAsset = isImage(asset.path);
+        const currentFormat = getFileExtension(asset.path);
+        const formats = ['svg', 'png', 'jpg', 'webp'];
+        // Show all formats except current one (current format shown separately as "original")
+        const availableFormats = formats.filter(f => f !== currentFormat);
 
-        // Action buttons (only for SVG)
-        const actionButtons = isSvgAsset ? `
-            <div class="card-actions">
-                <button class="action-btn copy-svg" aria-label="Copy SVG" title="Copy SVG">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                </button>
-                <button class="action-btn copy-png" aria-label="Copy PNG" title="Copy PNG">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/>
-                    </svg>
-                </button>
-                <button class="action-btn download-svg" aria-label="Download SVG" title="Download SVG">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                        </svg>
-                </button>
-                <button class="action-btn download-png" aria-label="Download PNG" title="Download PNG">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                    </svg>
-                </button>
-            </div>
-        ` : '';
+        // Get direct URL path for copy path button
+        const directPath = asset.path.replace(/^assets\//, '');
+        const fullUrl = `https://assets.awsug.nz/${directPath}`;
+
+        // Create a 3x3 grid: copies form a cross, downloads at corners, copy path in center
+        // Grid layout (positions):
+        // [1,1] [2,1] [3,1]  - Top row
+        // [1,2] [2,2] [3,2]  - Middle row (center is copy path)
+        // [1,3] [2,3] [3,3]  - Bottom row
+        // Pattern: Downloads at corners [1,1], [3,1], [1,3], [3,3]
+        //          Copies form cross: [2,1], [1,2], [3,2], [2,3]
+        //          Copy path at center [2,2]
+        const createButton = (format, action, position, title) => {
+            const icon = action === 'download'
+                ? '<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>'
+                : '<path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>';
+            return `<button class="action-btn ${action}-${format}" data-format="${format}" data-action="${action}" title="${title}" style="grid-column: ${position[0]}; grid-row: ${position[1]};">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${icon}</svg>
+            </button>`;
+        };
+
+        const createPathButton = (position) => {
+            return `<button class="action-btn copy-path" data-path="${fullUrl}" title="Copy full URL: ${fullUrl}" style="grid-column: ${position[0]}; grid-row: ${position[1]};">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+                </svg>
+            </button>`;
+        };
+
+        let buttons = '';
+
+        if (isImageAsset) {
+            // Always add copy path at center
+            buttons += createPathButton([2, 2]);
+
+            // Assign formats to positions
+            // Downloads at corners: [1,1], [3,1], [1,3], [3,3]
+            // Copies in cross: [2,1], [1,2], [3,2], [2,3]
+            const downloadPositions = [[1, 1], [3, 1], [1, 3], [3, 3]];
+            const copyPositions = [[2, 1], [1, 2], [3, 2], [2, 3]];
+
+            // Add buttons for available formats
+            for (let i = 0; i < Math.min(availableFormats.length, 4); i++) {
+                const format = availableFormats[i];
+                buttons += createButton(format, 'download', downloadPositions[i], `Download as ${format.toUpperCase()}`);
+                buttons += createButton(format, 'copy', copyPositions[i], `Copy as ${format.toUpperCase()}`);
+            }
+
+            // If we have fewer than 4 formats, add original format buttons
+            if (availableFormats.length < 4) {
+                const remainingSlots = 4 - availableFormats.length;
+                for (let i = 0; i < remainingSlots && i < 2; i++) {
+                    const downloadPos = downloadPositions[availableFormats.length + i];
+                    const copyPos = copyPositions[availableFormats.length + i];
+                    if (downloadPos) {
+                        buttons += createButton(currentFormat, 'download', downloadPos, 'Download original');
+                    }
+                    if (copyPos) {
+                        buttons += createButton(currentFormat, 'copy', copyPos, 'Copy original');
+                    }
+                }
+            }
+        }
+
+        const actionButtons = isImageAsset ? `<div class="card-actions-grid">${buttons}</div>` : '';
 
         card.innerHTML = `
             <div class="asset-container">
@@ -323,25 +444,44 @@ function render() {
             </div>
         `;
 
-        // Attach event listeners for SVG actions
-        if (isSvgAsset) {
-            const copySvgBtn = card.querySelector(".copy-svg");
-            const copyPngBtn = card.querySelector(".copy-png");
-            const downloadSvgBtn = card.querySelector(".download-svg");
-            const downloadPngBtn = card.querySelector(".download-png");
+        // Attach event listeners for format actions
+        if (isImageAsset) {
+            const actionButtons = card.querySelectorAll(".card-actions-grid .action-btn");
 
-            if (copySvgBtn) {
-                copySvgBtn.addEventListener("click", () => copySvg(asset, copySvgBtn));
-            }
-            if (copyPngBtn) {
-                copyPngBtn.addEventListener("click", () => copyPng(asset, copyPngBtn));
-            }
-            if (downloadSvgBtn) {
-                downloadSvgBtn.addEventListener("click", () => downloadSvg(asset));
-            }
-            if (downloadPngBtn) {
-                downloadPngBtn.addEventListener("click", () => downloadPng(asset));
-            }
+            actionButtons.forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+
+                    // Handle path copy button
+                    if (button.classList.contains('copy-path')) {
+                        const path = button.dataset.path;
+                        try {
+                            await navigator.clipboard.writeText(path);
+                            const oldHTML = button.innerHTML;
+                            const oldTitle = button.title;
+                            button.innerHTML = "✓";
+                            button.title = "Copied!";
+                            setTimeout(() => {
+                                button.innerHTML = oldHTML;
+                                button.title = oldTitle;
+                            }, 1000);
+                        } catch (err) {
+                            console.error("Failed to copy path:", err);
+                            alert("Failed to copy path to clipboard");
+                        }
+                        return;
+                    }
+
+                    const format = button.dataset.format;
+                    const action = button.dataset.action;
+
+                    if (action === 'copy') {
+                        await copyImage(asset, format, button);
+                    } else if (action === 'download') {
+                        await downloadImage(asset, format);
+                    }
+                });
+            });
         }
 
         frag.appendChild(card);
