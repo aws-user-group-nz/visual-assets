@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'assets/**'   # assets changes are handled via update-assets workflow then re-run deploy via workflow_run
+  workflow_run:
+    workflows: [ "Update Assets JSON" ]
+    types: [ completed ]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +21,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Only run after update-assets if that workflow succeeded
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
