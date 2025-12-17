@@ -1,6 +1,19 @@
 {
   "assets": [
     {
+      "name": "arshad-zackeriya-awsfanboy-image",
+      "type": "image",
+      "path": "assets/images/arshad-zackeriya-awsfanboy.svg",
+      "tags": [
+        "arshad",
+        "awsfanboy",
+        "image",
+        "zackeriya"
+      ],
+      "size": 500,
+      "description": "Arshad Zackeriya Awsfanboy image asset (500×500)"
+    },
+    {
       "name": "aws-black-icon",
       "type": "icon",
       "path": "assets/icons/aws-black.svg",
@@ -428,6 +441,31 @@
       "description": "Awscd Oceania White White Square Virtual Wide logo asset (1280×1280)"
     },
     {
+      "name": "casey-orr-image",
+      "type": "image",
+      "path": "assets/images/casey-orr.svg",
+      "tags": [
+        "casey",
+        "image",
+        "orr"
+      ],
+      "size": 500,
+      "description": "Casey Orr image asset (500×500)"
+    },
+    {
+      "name": "chamila-de-alwis-image",
+      "type": "image",
+      "path": "assets/images/chamila-de-alwis.svg",
+      "tags": [
+        "alwis",
+        "chamila",
+        "de",
+        "image"
+      ],
+      "size": 500,
+      "description": "Chamila De Alwis image asset (500×500)"
+    },
+    {
       "name": "datacom-primary-blue-logo",
       "type": "logo",
       "path": "assets/logos/datacom-primary-blue.svg",
@@ -452,6 +490,55 @@
       ],
       "size": 160,
       "description": "Datacom Primary White logo asset (160×160)"
+    },
+    {
+      "name": "johna-ajera-image",
+      "type": "image",
+      "path": "assets/images/johna-ajera.svg",
+      "tags": [
+        "ajera",
+        "image",
+        "johna"
+      ],
+      "size": 500,
+      "description": "Johna Ajera image asset (500×500)"
+    },
+    {
+      "name": "mike-rewiri-thorsen-image",
+      "type": "image",
+      "path": "assets/images/mike-rewiri-thorsen.svg",
+      "tags": [
+        "image",
+        "mike",
+        "rewiri",
+        "thorsen"
+      ],
+      "size": 500,
+      "description": "Mike Rewiri Thorsen image asset (500×500)"
+    },
+    {
+      "name": "paul-dunlop-image",
+      "type": "image",
+      "path": "assets/images/paul-dunlop.svg",
+      "tags": [
+        "dunlop",
+        "image",
+        "paul"
+      ],
+      "size": 500,
+      "description": "Paul Dunlop image asset (500×500)"
+    },
+    {
+      "name": "ramaswamy-arunachalam-image",
+      "type": "image",
+      "path": "assets/images/ramaswamy-arunachalam.svg",
+      "tags": [
+        "arunachalam",
+        "image",
+        "ramaswamy"
+      ],
+      "size": 500,
+      "description": "Ramaswamy Arunachalam image asset (500×500)"
     }
   ]
 }
