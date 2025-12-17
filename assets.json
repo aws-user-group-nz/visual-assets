@@ -227,6 +227,23 @@
       "description": "Awscd Oceania Blue Blue Square White Virtual logo asset (906×906)"
     },
     {
+      "name": "awscd-oceania-blue-blue-square-white-virtual-wide-logo",
+      "type": "logo",
+      "path": "assets/logos/awscd-oceania-blue-blue-square-white-virtual-wide.svg",
+      "tags": [
+        "awscd",
+        "blue",
+        "logo",
+        "oceania",
+        "square",
+        "virtual",
+        "white",
+        "wide"
+      ],
+      "size": 1280,
+      "description": "Awscd Oceania Blue Blue Square White Virtual Wide logo asset (1280×1280)"
+    },
+    {
       "name": "awscd-oceania-blue-orange-icon",
       "type": "icon",
       "path": "assets/icons/awscd-oceania-blue-orange.svg",
@@ -287,6 +304,23 @@
       "description": "Awscd Oceania Blue Orange Square Virtual logo asset (906×906)"
     },
     {
+      "name": "awscd-oceania-blue-orange-square-virtual-wide-logo",
+      "type": "logo",
+      "path": "assets/logos/awscd-oceania-blue-orange-square-virtual-wide.svg",
+      "tags": [
+        "awscd",
+        "blue",
+        "logo",
+        "oceania",
+        "orange",
+        "square",
+        "virtual",
+        "wide"
+      ],
+      "size": 1280,
+      "description": "Awscd Oceania Blue Orange Square Virtual Wide logo asset (1280×1280)"
+    },
+    {
       "name": "awscd-oceania-white-orange-icon",
       "type": "icon",
       "path": "assets/icons/awscd-oceania-white-orange.svg",
@@ -332,6 +366,23 @@
       "description": "Awscd Oceania White White Square Gray Virtual logo asset (906×906)"
     },
     {
+      "name": "awscd-oceania-white-white-square-gray-virtual-wide-logo",
+      "type": "logo",
+      "path": "assets/logos/awscd-oceania-white-white-square-gray-virtual-wide.svg",
+      "tags": [
+        "awscd",
+        "gray",
+        "logo",
+        "oceania",
+        "square",
+        "virtual",
+        "white",
+        "wide"
+      ],
+      "size": 1280,
+      "description": "Awscd Oceania White White Square Gray Virtual Wide logo asset (1280×1280)"
+    },
+    {
       "name": "awscd-oceania-white-white-square-logo",
       "type": "logo",
       "path": "assets/logos/awscd-oceania-white-white-square.svg",
@@ -359,6 +410,22 @@
       ],
       "size": 906,
       "description": "Awscd Oceania White White Square Virtual logo asset (906×906)"
+    },
+    {
+      "name": "awscd-oceania-white-white-square-virtual-wide-logo",
+      "type": "logo",
+      "path": "assets/logos/awscd-oceania-white-white-square-virtual-wide.svg",
+      "tags": [
+        "awscd",
+        "logo",
+        "oceania",
+        "square",
+        "virtual",
+        "white",
+        "wide"
+      ],
+      "size": 1280,
+      "description": "Awscd Oceania White White Square Virtual Wide logo asset (1280×1280)"
     },
     {
       "name": "datacom-primary-blue-logo",
