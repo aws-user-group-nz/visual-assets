@@ -1,4 +1,33 @@
 const state = { q: "", tags: new Set(), type: "", size: "", data: [] };
+const dimensionCache = new Map();
+
+// Resolve image dimensions (uses cache and falls back to real image load)
+function getAssetDimensions(asset) {
+    if (!asset) return Promise.reject(new Error("Missing asset"));
+
+    // If width/height already provided in data, use and cache them
+    if (asset.width && asset.height) {
+        const dims = { width: asset.width, height: asset.height };
+        dimensionCache.set(asset.path, dims);
+        return Promise.resolve(dims);
+    }
+
+    // Cache hit
+    const cached = dimensionCache.get(asset.path);
+    if (cached) return Promise.resolve(cached);
+
+    // Load image to measure
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const dims = { width: img.naturalWidth, height: img.naturalHeight };
+            dimensionCache.set(asset.path, dims);
+            resolve(dims);
+        };
+        img.onerror = () => reject(new Error(`Failed to load ${asset.path} for dimension read`));
+        img.src = asset.path;
+    });
+}
 
 // Dark mode initialization
 function initDarkMode() {
@@ -356,7 +385,8 @@ function render() {
         const displayName = asset.name || 'Unknown';
         const description = asset.description || `${displayName} ${asset.type || 'asset'}`;
         const theme = extractTheme(asset.name);
-        const sizeLabel = asset.size ? `${asset.size}×${asset.size}` : '';
+        const cachedDims = dimensionCache.get(asset.path) || (asset.width && asset.height ? { width: asset.width, height: asset.height } : null);
+        const sizeLabel = cachedDims ? `${cachedDims.width}×${cachedDims.height}` : '';
         const isImageAsset = isImage(asset.path);
         const currentFormat = getFileExtension(asset.path);
         const formats = ['svg', 'png', 'jpg', 'webp'];
@@ -439,10 +469,24 @@ function render() {
                 <div class="tooltip-description">${description}</div>
             </div>
             <div class="card-content">
-                <div class="name">${displayName}${sizeLabel ? ` (${sizeLabel})` : ''}</div>
+                <div class="name" data-asset-path="${asset.path}">${displayName}${sizeLabel ? ` (${sizeLabel})` : ''}</div>
                 <div class="type-badge">${asset.type || 'asset'}</div>
             </div>
         `;
+
+        // Populate dimensions asynchronously when not already cached
+        if (!sizeLabel) {
+            getAssetDimensions(asset)
+                .then(dims => {
+                    const nameEl = card.querySelector(`.name[data-asset-path="${asset.path}"]`);
+                    if (nameEl) {
+                        nameEl.textContent = `${displayName} (${dims.width}×${dims.height})`;
+                    }
+                })
+                .catch(() => {
+                    // Do nothing on failure; leave size blank
+                });
+        }
 
         // Attach event listeners for format actions
         if (isImageAsset) {
