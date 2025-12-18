@@ -334,6 +334,36 @@
       "description": "Awscd Oceania Blue Orange Square Virtual Wide logo asset (1280×1280)"
     },
     {
+      "name": "awscd-oceania-call-for-papers-2026-image",
+      "type": "image",
+      "path": "assets/images/awscd-oceania-call-for-papers-2026.svg",
+      "tags": [
+        "2026",
+        "awscd",
+        "call",
+        "for",
+        "image",
+        "oceania",
+        "papers"
+      ],
+      "size": 1200,
+      "description": "Awscd Oceania Call For Papers 2026 image asset (1200×1200)"
+    },
+    {
+      "name": "awscd-oceania-qrcode-2026-image",
+      "type": "image",
+      "path": "assets/images/awscd-oceania-qrcode-2026.svg",
+      "tags": [
+        "2026",
+        "awscd",
+        "image",
+        "oceania",
+        "qrcode"
+      ],
+      "size": 1320,
+      "description": "Awscd Oceania Qrcode 2026 image asset (1320×1320)"
+    },
+    {
       "name": "awscd-oceania-white-orange-icon",
       "type": "icon",
       "path": "assets/icons/awscd-oceania-white-orange.svg",
