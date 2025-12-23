@@ -471,6 +471,19 @@
       "description": "Awscd Oceania White White Square Virtual Wide logo asset (1280×1280)"
     },
     {
+      "name": "awscd-ocenia-cfp-2026-video",
+      "type": "video",
+      "path": "assets/videos/awscd-ocenia-cfp-2026.mp4",
+      "tags": [
+        "2026",
+        "awscd",
+        "cfp",
+        "ocenia",
+        "video"
+      ],
+      "description": "Awscd Ocenia Cfp 2026 video asset"
+    },
+    {
       "name": "casey-orr-image",
       "type": "image",
       "path": "assets/images/casey-orr.svg",

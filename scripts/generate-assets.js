@@ -45,7 +45,7 @@ function generateName(filename, type) {
   // Remove extension
   const base = filename.replace(/\.[^/.]+$/, '');
   // Convert to kebab-case and add type suffix (singular)
-  const typeSingular = type.slice(0, -1); // Remove 's' from icons/logos/images
+  const typeSingular = type.slice(0, -1); // Remove 's' from icons/logos/images/videos
   return `${base}-${typeSingular}`;
 }
 
@@ -53,7 +53,7 @@ function extractTags(filename, type, directory) {
   const tags = new Set();
 
   // Add type as tag (singular)
-  const typeSingular = type.slice(0, -1); // Remove 's' from icons/logos/images
+  const typeSingular = type.slice(0, -1); // Remove 's' from icons/logos/images/videos
   tags.add(typeSingular);
 
   // Extract tags from filename (split by dashes)
@@ -90,7 +90,7 @@ function generateDescription(name, type, size, filename) {
 // Scan assets directory
 const assetsDir = path.join(__dirname, '..', 'assets');
 
-['icons', 'logos', 'images'].forEach(type => {
+['icons', 'logos', 'images', 'videos'].forEach(type => {
   const typeDir = path.join(assetsDir, type);
   if (!fs.existsSync(typeDir)) {
     return;
@@ -103,7 +103,8 @@ const assetsDir = path.join(__dirname, '..', 'assets');
 
     if (stat.isFile()) {
       const ext = path.extname(file).toLowerCase();
-      if (ext === '.svg' || ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
+      if (ext === '.svg' || ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' ||
+          ext === '.mp4' || ext === '.webm' || ext === '.mov' || ext === '.avi' || ext === '.mkv') {
         const relativePath = `assets/${type}/${file}`;
         const name = generateName(file, type);
         const size = ext === '.svg' ? extractSizeFromSvg(filePath) : null;

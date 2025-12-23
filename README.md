@@ -13,6 +13,7 @@ Place your assets in the appropriate subdirectory:
 - **Icons**: `assets/icons/` - Small icon files (typically SVG)
 - **Logos**: `assets/logos/` - Logo files (typically SVG)
 - **Images**: `assets/images/` - Image files (PNG, JPG, WebP, etc.)
+- **Videos**: `assets/videos/` - Video files (MP4, WebM, MOV, AVI, MKV, etc.)
 
 ### Supported File Formats
 
@@ -22,6 +23,9 @@ The following formats are supported:
 - **PNG** - Raster format with transparency support
 - **JPG/JPEG** - Raster format, smaller file size, no transparency
 - **WebP** - Modern raster format with excellent compression
+- **MP4** (recommended for videos) - Widely supported video format
+- **WebM** - Open video format with good compression
+- **MOV, AVI, MKV** - Other supported video formats
 
 ### Format Conversion
 
@@ -78,17 +82,20 @@ Assets are automatically made available at shorter, direct URLs:
 - Icons: `https://assets.awsug.nz/icons/filename.svg`
 - Logos: `https://assets.awsug.nz/logos/filename.svg`
 - Images: `https://assets.awsug.nz/images/filename.png`
+- Videos: `https://assets.awsug.nz/videos/filename.mp4`
 
 For example:
 
 - `assets/icons/aws-black-orange.svg` → `https://assets.awsug.nz/icons/aws-black-orange.svg`
 - `assets/logos/datacom-primary-blue.svg` → `https://assets.awsug.nz/logos/datacom-primary-blue.svg`
+- `assets/videos/awscd-ocenia-cfp-2026.mp4` → `https://assets.awsug.nz/videos/awscd-ocenia-cfp-2026.mp4`
 
 **Full URL format:** All assets can be accessed using the full URL path:
 
 - `https://assets.awsug.nz/icons/aws-black-orange.svg`
 - `https://assets.awsug.nz/logos/datacom-primary-blue.svg`
 - `https://assets.awsug.nz/images/your-image.png`
+- `https://assets.awsug.nz/videos/your-video.mp4`
 
 These URLs are created automatically during deployment - no manual configuration needed.
 
@@ -112,6 +119,10 @@ You can link directly to any asset using its direct URL:
 
 - `https://assets.awsug.nz/images/your-image.png`
 
+**Videos:**
+
+- `https://assets.awsug.nz/videos/your-video.mp4`
+
 ### In HTML
 
 Embed an image directly:
@@ -126,6 +137,14 @@ Link to an image (opens in new tab):
 <a href="https://assets.awsug.nz/icons/aws-black-orange.svg" target="_blank">
   View AWS Icon
 </a>
+```
+
+Embed a video:
+
+```html
+<video src="https://assets.awsug.nz/videos/your-video.mp4" controls>
+  Your browser does not support the video tag.
+</video>
 ```
 
 ### In Markdown
@@ -154,6 +173,10 @@ background-image: url('https://assets.awsug.nz/logos/datacom-primary-blue.svg');
 
 ```jsx
 <img src="https://assets.awsug.nz/icons/aws-black-orange.svg" alt="AWS Icon" />
+
+<video src="https://assets.awsug.nz/videos/your-video.mp4" controls>
+  Your browser does not support the video tag.
+</video>
 ```
 
 ### Download Links
