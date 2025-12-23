@@ -29,6 +29,35 @@ function getAssetDimensions(asset) {
     });
 }
 
+// Resolve video dimensions (uses cache and falls back to real video load)
+function getVideoDimensions(asset) {
+    if (!asset) return Promise.reject(new Error("Missing asset"));
+
+    // If width/height already provided in data, use and cache them
+    if (asset.width && asset.height) {
+        const dims = { width: asset.width, height: asset.height };
+        dimensionCache.set(asset.path, dims);
+        return Promise.resolve(dims);
+    }
+
+    // Cache hit
+    const cached = dimensionCache.get(asset.path);
+    if (cached) return Promise.resolve(cached);
+
+    // Load video to measure
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            const dims = { width: video.videoWidth, height: video.videoHeight };
+            dimensionCache.set(asset.path, dims);
+            resolve(dims);
+        };
+        video.onerror = () => reject(new Error(`Failed to load ${asset.path} for dimension read`));
+        video.src = asset.path;
+    });
+}
+
 // Dark mode initialization
 function initDarkMode() {
     const saved = localStorage.getItem("darkMode");
@@ -171,6 +200,12 @@ function isSvg(path) {
 function isImage(path) {
     const ext = getFileExtension(path);
     return ['svg', 'png', 'jpg', 'webp'].includes(ext);
+}
+
+// Check if asset is a video
+function isVideo(path) {
+    const ext = getFileExtension(path);
+    return ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext);
 }
 
 // Get image dimensions from asset or image element
@@ -358,6 +393,46 @@ async function downloadImage(asset, format) {
     }
 }
 
+// Download video (original only)
+async function downloadVideo(asset) {
+    try {
+        const response = await fetch(asset.path);
+        const blob = await response.blob();
+        const filename = asset.path.split("/").pop();
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("Failed to download video:", err);
+        alert("Failed to download video");
+    }
+}
+
+// Copy video URL to clipboard
+async function copyVideoUrl(asset, button) {
+    try {
+        const directPath = asset.path.replace(/^assets\//, '');
+        const fullUrl = `https://assets.awsug.nz/${directPath}`;
+        await navigator.clipboard.writeText(fullUrl);
+
+        const oldHTML = button.innerHTML;
+        const oldTitle = button.title;
+        button.innerHTML = "✓";
+        button.title = "Copied!";
+        setTimeout(() => {
+            button.innerHTML = oldHTML;
+            button.title = oldTitle;
+        }, 1000);
+    } catch (err) {
+        console.error("Failed to copy video URL:", err);
+        alert("Failed to copy video URL to clipboard");
+    }
+}
+
 // Render assets
 function render() {
     const grid = document.getElementById("grid");
@@ -388,6 +463,7 @@ function render() {
         const cachedDims = dimensionCache.get(asset.path) || (asset.width && asset.height ? { width: asset.width, height: asset.height } : null);
         const sizeLabel = cachedDims ? `${cachedDims.width}×${cachedDims.height}` : '';
         const isImageAsset = isImage(asset.path);
+        const isVideoAsset = isVideo(asset.path);
         const currentFormat = getFileExtension(asset.path);
         const formats = ['svg', 'png', 'jpg', 'webp'];
         // Show all formats except current one (current format shown separately as "original")
@@ -424,44 +500,59 @@ function render() {
 
         let buttons = '';
 
-        if (isImageAsset) {
-            // Always add copy path at center
-            buttons += createPathButton([2, 2]);
+        if (isImageAsset || isVideoAsset) {
+            if (isImageAsset) {
+                // Always add copy path at center for images
+                buttons += createPathButton([2, 2]);
 
-            // Assign formats to positions
-            // Downloads at corners: [1,1], [3,1], [1,3], [3,3]
-            // Copies in cross: [2,1], [1,2], [3,2], [2,3]
-            const downloadPositions = [[1, 1], [3, 1], [1, 3], [3, 3]];
-            const copyPositions = [[2, 1], [1, 2], [3, 2], [2, 3]];
+                // Only create format conversion buttons for images, not videos
+                // Assign formats to positions
+                // Downloads at corners: [1,1], [3,1], [1,3], [3,3]
+                // Copies in cross: [2,1], [1,2], [3,2], [2,3]
+                const downloadPositions = [[1, 1], [3, 1], [1, 3], [3, 3]];
+                const copyPositions = [[2, 1], [1, 2], [3, 2], [2, 3]];
 
-            // Add buttons for available formats
-            for (let i = 0; i < Math.min(availableFormats.length, 4); i++) {
-                const format = availableFormats[i];
-                buttons += createButton(format, 'download', downloadPositions[i], `Download as ${format.toUpperCase()}`);
-                buttons += createButton(format, 'copy', copyPositions[i], `Copy as ${format.toUpperCase()}`);
-            }
+                // Add buttons for available formats
+                for (let i = 0; i < Math.min(availableFormats.length, 4); i++) {
+                    const format = availableFormats[i];
+                    buttons += createButton(format, 'download', downloadPositions[i], `Download as ${format.toUpperCase()}`);
+                    buttons += createButton(format, 'copy', copyPositions[i], `Copy as ${format.toUpperCase()}`);
+                }
 
-            // If we have fewer than 4 formats, add original format buttons
-            if (availableFormats.length < 4) {
-                const remainingSlots = 4 - availableFormats.length;
-                for (let i = 0; i < remainingSlots && i < 2; i++) {
-                    const downloadPos = downloadPositions[availableFormats.length + i];
-                    const copyPos = copyPositions[availableFormats.length + i];
-                    if (downloadPos) {
-                        buttons += createButton(currentFormat, 'download', downloadPos, 'Download original');
-                    }
-                    if (copyPos) {
-                        buttons += createButton(currentFormat, 'copy', copyPos, 'Copy original');
+                // If we have fewer than 4 formats, add original format buttons
+                if (availableFormats.length < 4) {
+                    const remainingSlots = 4 - availableFormats.length;
+                    for (let i = 0; i < remainingSlots && i < 2; i++) {
+                        const downloadPos = downloadPositions[availableFormats.length + i];
+                        const copyPos = copyPositions[availableFormats.length + i];
+                        if (downloadPos) {
+                            buttons += createButton(currentFormat, 'download', downloadPos, 'Download original');
+                        }
+                        if (copyPos) {
+                            buttons += createButton(currentFormat, 'copy', copyPos, 'Copy original');
+                        }
                     }
                 }
+            } else if (isVideoAsset) {
+                // For videos, add only 2 buttons: download and copy URL, centered and on same level
+                // Position them at [1, 2] (left-center) and [3, 2] (right-center) for horizontal alignment
+                buttons += createButton(currentFormat, 'download', [1, 2], 'Download original');
+                buttons += createPathButton([3, 2]);
             }
         }
 
-        const actionButtons = isImageAsset ? `<div class="card-actions-grid">${buttons}</div>` : '';
+        const actionButtons = (isImageAsset || isVideoAsset) ? `<div class="card-actions-grid">${buttons}</div>` : '';
+
+        // Use video tag for videos, img tag for images
+        const videoId = `video-${asset.path.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        const mediaElement = isVideoAsset
+            ? `<video id="${videoId}" src="${asset.path}" class="asset-image" controls preload="metadata" playsinline muted></video>`
+            : `<img src="${asset.path}" alt="${displayName}" class="asset-image" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: var(--text-secondary);\\'>Image not found</div>'">`;
 
         card.innerHTML = `
             <div class="asset-container">
-                <img src="${asset.path}" alt="${displayName}" class="asset-image" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: var(--text-secondary);\\'>Image not found</div>'">
+                ${mediaElement}
+                ${isVideoAsset ? '<div class="video-error-fallback" style="display: none; padding: 20px; text-align: center; color: var(--text-secondary); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; background: var(--bg-secondary);">Video not available</div>' : ''}
                 ${actionButtons}
             </div>
             <div class="asset-tooltip">
@@ -476,19 +567,52 @@ function render() {
 
         // Populate dimensions asynchronously when not already cached
         if (!sizeLabel) {
-            getAssetDimensions(asset)
-                .then(dims => {
-                    const nameEl = card.querySelector(`.name[data-asset-path="${asset.path}"]`);
-                    if (nameEl) {
-                        nameEl.textContent = `${displayName} (${dims.width}×${dims.height})`;
-                    }
-                })
-                .catch(() => {
-                    // Do nothing on failure; leave size blank
-                });
+            if (isImageAsset) {
+                getAssetDimensions(asset)
+                    .then(dims => {
+                        const nameEl = card.querySelector(`.name[data-asset-path="${asset.path}"]`);
+                        if (nameEl) {
+                            nameEl.textContent = `${displayName} (${dims.width}×${dims.height})`;
+                        }
+                    })
+                    .catch(() => {
+                        // Do nothing on failure; leave size blank
+                    });
+            } else if (isVideoAsset) {
+                getVideoDimensions(asset)
+                    .then(dims => {
+                        const nameEl = card.querySelector(`.name[data-asset-path="${asset.path}"]`);
+                        if (nameEl) {
+                            nameEl.textContent = `${displayName} (${dims.width}×${dims.height})`;
+                        }
+                    })
+                    .catch(() => {
+                        // Do nothing on failure; leave size blank
+                    });
+            }
         }
 
-        // Attach event listeners for format actions
+        // Attach video error handler
+        if (isVideoAsset) {
+            const videoElement = card.querySelector(`#${videoId}`);
+            const errorFallback = card.querySelector('.video-error-fallback');
+            if (videoElement) {
+                videoElement.addEventListener('error', () => {
+                    if (errorFallback) {
+                        errorFallback.style.display = 'flex';
+                        videoElement.style.display = 'none';
+                    }
+                });
+                // Also handle case where video loads successfully - hide error fallback
+                videoElement.addEventListener('loadedmetadata', () => {
+                    if (errorFallback) {
+                        errorFallback.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        // Attach event listeners for format actions (only for images, not videos)
         if (isImageAsset) {
             const actionButtons = card.querySelectorAll(".card-actions-grid .action-btn");
 
@@ -516,13 +640,50 @@ function render() {
                         return;
                     }
 
+                const format = button.dataset.format;
+                const action = button.dataset.action;
+
+                if (action === 'copy') {
+                    await copyImage(asset, format, button);
+                } else if (action === 'download') {
+                    await downloadImage(asset, format);
+                }
+                });
+            });
+        } else if (isVideoAsset) {
+            // For videos, handle download and copy path (URL) buttons
+            const actionButtons = card.querySelectorAll(".card-actions-grid .action-btn");
+
+            actionButtons.forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+
+                    // Handle copy path button (folder icon)
+                    if (button.classList.contains('copy-path')) {
+                        const path = button.dataset.path;
+                        try {
+                            await navigator.clipboard.writeText(path);
+                            const oldHTML = button.innerHTML;
+                            const oldTitle = button.title;
+                            button.innerHTML = "✓";
+                            button.title = "Copied!";
+                            setTimeout(() => {
+                                button.innerHTML = oldHTML;
+                                button.title = oldTitle;
+                            }, 1000);
+                        } catch (err) {
+                            console.error("Failed to copy path:", err);
+                            alert("Failed to copy path to clipboard");
+                        }
+                        return;
+                    }
+
+                    // Handle download button
                     const format = button.dataset.format;
                     const action = button.dataset.action;
 
-                    if (action === 'copy') {
-                        await copyImage(asset, format, button);
-                    } else if (action === 'download') {
-                        await downloadImage(asset, format);
+                    if (action === 'download') {
+                        await downloadVideo(asset);
                     }
                 });
             });

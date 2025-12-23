@@ -2,12 +2,12 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths-ignore:
-      - 'assets/**'   # assets changes are handled via update-assets workflow then re-run deploy via workflow_run
+      - "assets/**" # assets changes are handled via update-assets workflow then re-run deploy via workflow_run
   workflow_run:
-    workflows: [ "Update Assets JSON" ]
-    types: [ completed ]
+    workflows: ["Update Assets JSON"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Node.js (for fallback)
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - name: Generate assets.json if missing (fallback)
         run: |
           if [ ! -f "assets.json" ]; then
@@ -42,7 +42,7 @@ jobs:
           fi
       - name: Create symlinks for direct access
         run: |
-          mkdir -p icons logos images
+          mkdir -p icons logos images videos
           if [ -d "assets/icons" ]; then
             cp -r assets/icons/* icons/
           fi
@@ -52,12 +52,15 @@ jobs:
           if [ -d "assets/images" ]; then
             cp -r assets/images/* images/
           fi
+          if [ -d "assets/videos" ]; then
+            cp -r assets/videos/* videos/
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: "."
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
